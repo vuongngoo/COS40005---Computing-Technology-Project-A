@@ -1,6 +1,6 @@
 ## COS40005 - Computing Technology Project A
 
-**Group:** 
+**Group:** PWC (Packed With Chickens)
 
 **Semester:** Septemnber - November 2026
 
