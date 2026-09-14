@@ -23,9 +23,14 @@ Please contact our group leader via Email or Phone:
 - Phone: ***0964753944***
 
 ### Group Tools:
-- **Github:** Source code and files (shared using the group leader's repository)
+- **Github:** [Source code and files](https://github.com/vuongngoo/COS40005---Computing-Technology-Project-A)
 - **Google Doc:** [Reports and Forms](https://docs.google.com/document/d/1LSULFDJQ5SirWlNIa1bi7qAtlYH97PtKeu0K9opfWWM/edit?usp=sharing)
 - **Canva:** [Designs](https://canva.link/qlyh0ao6q3dgyh2)
 - **Google Drive:** Will be provided if needed
 - **Messenger:** Group chat
 - **Discord:** Weekly Meetings
+
+---
+
+### Project Information:
+More information will be updated soon...
