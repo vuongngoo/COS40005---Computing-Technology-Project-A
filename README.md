@@ -14,8 +14,8 @@
 1. Member 1: **Ngo Sy Vuong** [Group Leader] - ID: 105551480
 3. Member 2: **Giang Ngoc Vu** [ ] - ID:
 4. Member 3: **Tran Duc Minh** [ ] - ID:
-5. Member 4: **Phuc Anh** [ ] - ID: 
-6. Member 5: **L** [ ] - ID: 
+5. Member 4: **Nguyen Hoang Phuc Anh** [ ] - ID: 
+6. Member 5: **Nguyen Duy Hoang** [ ] - ID: 
 
 ### Primary Contact:
 Please contact our group leader via Email or Phone:
