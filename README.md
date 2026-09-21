@@ -2,7 +2,7 @@
 
 **Group 7** 
 
-**Semester:** Septemnber - November 2026
+**Semester:** September - November 2026
 
 **Tutor:** Le Minh Duc
 
@@ -11,11 +11,11 @@
 ---
 
 ### Group Information:
-1. Member 1: **Ngo Sy Vuong** [Group Leader] - ID: 105551480
-3. Member 2: **Giang Ngoc Vu** [ ] - ID:
-4. Member 3: **Tran Duc Minh** [ ] - ID:
-5. Member 4: **Nguyen Hoang Phuc Anh** [ ] - ID: 
-6. Member 5: **Nguyen Duy Hoang** [CyberSecurity] - ID: 105551448 
+1. Member 1: **Ngo Sy Vuong** [Project Manager + AI lead] - ID: 105551480
+3. Member 2: **Giang Ngoc Vu** [Frontend Developer] - ID: 105551587
+4. Member 3: **Tran Duc Minh** [Full stack + Cybersecurity support] - ID: 105543843
+5. Member 4: **Nguyen Hoang Phuc Anh** [Backend Developer] - ID: 105551545
+6. Member 5: **Nguyen Duy Hoang** [CyberSecurity lead] - ID: 105551448 
 
 ### Primary Contact:
 Please contact our group leader via Email or Phone:
