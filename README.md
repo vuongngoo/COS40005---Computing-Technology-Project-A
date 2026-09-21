@@ -15,7 +15,7 @@
 3. Member 2: **Giang Ngoc Vu** [ ] - ID:
 4. Member 3: **Tran Duc Minh** [ ] - ID:
 5. Member 4: **Nguyen Hoang Phuc Anh** [ ] - ID: 
-6. Member 5: **Nguyen Duy Hoang** [ ] - ID: 
+6. Member 5: **Nguyen Duy Hoang** [CyberSecurity] - ID: 105551448 
 
 ### Primary Contact:
 Please contact our group leader via Email or Phone:
