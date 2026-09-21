@@ -1,6 +1,6 @@
 ## COS40005 - Computing Technology Project A
 
-**Group:** PWC (Packed With Chickens)
+**Group 7** 
 
 **Semester:** Septemnber - November 2026
 
@@ -33,4 +33,13 @@ Please contact our group leader via Email or Phone:
 ---
 
 ### Project Information:
-More information will be updated soon...
+***CAP-07: Detection-as-Code: Engineering, Testing, and Validating Cybersecurity Detections***
+
+Academic supervisor: ***Van Dai Pham*** - dvpham@swin.edu.au
+
+Industry supervisor: ***ISC2 Vietnam Chapter / Mr.robert.leyba@owasp.org***  
+
+Security detection rules are often created manually and deployed directly into security platforms, making them difficult to review, test, maintain, and validate consistently.
+Software-engineering practices such as version control, automated testing, continuous integration, peer review, and reproducible deployment can provide a more disciplined approach to detection development.
+
+This project investigates a Detection-as-Code model in which security detections are treated as maintainable engineering artifacts: version-controlled, mapped to adversary behavior, automatically validated, and tested against controlled simulations.
