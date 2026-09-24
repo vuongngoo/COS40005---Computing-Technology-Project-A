@@ -4,9 +4,7 @@
 
 **Semester:** September - November 2026
 
-**Tutor:** Le Minh Duc
-
-**Tutorial Session:** 8:00 - 12:00 Thursday
+**Supervisor Meeting Session:** 8:00 - 12:00 Thursday
 
 ---
 
