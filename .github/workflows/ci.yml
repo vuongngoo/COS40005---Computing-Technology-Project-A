@@ -1,8 +1,11 @@
 name: CI
 on:
   push:
+    paths:
+      - 'rules/**'
   pull_request:
-  workflow_dispatch:
+    paths:
+      - 'rules/**'
 
 permissions:
   contents: read
