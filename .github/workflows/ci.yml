@@ -48,7 +48,9 @@ jobs:
 
       - name: Check and convert rules
         if: steps.changed.outputs.files != ''
-        run: python scripts/process_rules.py ${{ steps.changed.outputs.files }}
+        env:
+          FILES: ${{ steps.changed.outputs.files }}
+        run: echo "$FILES" | xargs -d '\n' python scripts/process_rules.py
 
       - name: Save output
         if: always() && steps.changed.outputs.files != ''
