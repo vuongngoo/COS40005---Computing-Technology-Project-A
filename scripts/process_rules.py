@@ -1,5 +1,11 @@
-"""Demo pipeline step: check every rule in rules/, then convert it to JSON + a plain query.
-Fails (exit 1) with a clear message if a rule is invalid."""
+"""Demo pipeline step: check rules in rules/, then convert each to JSON + a plain query.
+
+Usage:
+  python scripts/process_rules.py                      # check ALL rules in rules/
+  python scripts/process_rules.py rules/a.yml rules/b.yml   # check ONLY these files
+
+Fails (exit 1) with a clear message if a checked rule is invalid.
+"""
 import json, os, pathlib, re, sys, yaml
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -7,9 +13,30 @@ OUT = ROOT / "out" / "converted"
 REQUIRED = ["title", "id", "status", "author", "date", "tags",
             "logsource", "detection", "level", "falsepositives"]
 
+
 def error(path, msg):
     # "::error" makes GitHub show the message on the run page
     print(f"::error file={path.relative_to(ROOT)}::{msg}")
+
+
+def rule_files(args):
+    """Which files to check.
+    - No arguments: every rules/*.yml (local run / full scan).
+    - With arguments: only those files. Paths that no longer exist
+      (deleted in the push) are skipped instead of crashing.
+    """
+    if not args:
+        return sorted((ROOT / "rules").glob("*.yml"))
+    files = []
+    for a in args:
+        p = pathlib.Path(a)
+        p = (p if p.is_absolute() else pathlib.Path.cwd() / p).resolve()
+        if not p.exists():
+            print(f"::notice::Skipping {a} (deleted or not found)")
+            continue
+        files.append(p)
+    return sorted(files)
+
 
 def check(path, rule):
     problems = []
@@ -26,6 +53,7 @@ def check(path, rule):
         problems.append("detection has no 'condition'")
     return problems
 
+
 def to_query(detection):
     parts = []
     for name, sel in detection.items():
@@ -41,10 +69,13 @@ def to_query(detection):
         parts.append(f"{name}: " + " AND ".join(clauses))
     return parts
 
+
 def main():
+    args = sys.argv[1:]
     OUT.mkdir(parents=True, exist_ok=True)
     rows, failed = [], False
-    for path in sorted((ROOT / "rules").glob("*.yml")):
+
+    for path in rule_files(args):
         try:
             rule = yaml.safe_load(path.read_text(encoding="utf-8"))
         except yaml.YAMLError as e:
@@ -52,6 +83,7 @@ def main():
             rows.append((path.name, "FAIL", "invalid YAML"))
             failed = True
             continue
+
         problems = check(path, rule)
         if problems:
             for p in problems:
@@ -59,6 +91,7 @@ def main():
             rows.append((path.name, "FAIL", "; ".join(problems)))
             failed = True
             continue
+
         converted = {
             "rule_id": rule["id"],
             "title": rule["title"],
@@ -74,15 +107,21 @@ def main():
     print("\nResult:")
     for name, status, note in rows:
         print(f"  {status}  {name}  {note}")
+
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
-    if summary:
+    if summary and rows:
         with open(summary, "a", encoding="utf-8") as f:
             f.write("| Rule | Result | Detail |\n|---|---|---|\n")
             for name, status, note in rows:
                 f.write(f"| {name} | {status} | {note} |\n")
-    if not rows:
+
+    # Only complain about "no rules" on a full scan. When specific files were
+    # passed in (e.g. a push that only deleted rules), an empty list is fine.
+    if not rows and not args:
         print("::error::No rules found in rules/")
         failed = True
+
     sys.exit(1 if failed else 0)
+
 
 main()
