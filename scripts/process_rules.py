@@ -1,4 +1,4 @@
-"""Demo pipeline step: check rules in rules/, then convert each to JSON + a plain query.
+"""Pipeline step: check rules in rules/, then convert each to JSON + a plain query.
 
 Usage:
   python scripts/process_rules.py                      # check ALL rules in rules/
@@ -99,7 +99,7 @@ def main():
             "techniques": [t for t in rule["tags"] if str(t).lower().startswith("attack.t")],
             "query": to_query(rule["detection"]),
             "condition": rule["detection"]["condition"],
-            "note": "Demo conversion. A real pipeline would use pySigma here.",
+            "note": "Demo conversion. The real coversion is in the next part of the pipeline(convert_wazuh.py).",
         }
         (OUT / f"{path.stem}.json").write_text(json.dumps(converted, indent=2), encoding="utf-8")
         rows.append((path.name, "PASS", f"converted to out/converted/{path.stem}.json"))
