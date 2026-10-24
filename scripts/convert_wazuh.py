@@ -90,12 +90,10 @@ def deterministic_rule_id(sigma_uuid: str) -> int:
 
 
 def sigma_val_to_pcre2(val) -> str:
-    """Convert a pySigma SigmaString or SigmaRegularExpression to a Wazuh PCRE2 pattern."""
     if isinstance(val, SigmaRegularExpression):
         return str(val.regexp)
     if isinstance(val, SigmaString):
-        # Convert Sigma wildcards (* and ?) into PCRE2 equivalents
-        return str(val.to_regex(add_anchors=False))
+        return str(val.to_regex())
     return str(val)
 
 
