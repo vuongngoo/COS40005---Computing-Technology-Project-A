@@ -24,7 +24,7 @@ from sigma.processing.transformations import FieldMappingTransformation
 from sigma.types import SigmaRegularExpression, SigmaString
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-OUT_DIR = ROOT / "out" 
+OUT_DIR = ROOT / "out" / "converted"
 
 # Map Sigma severity levels to Wazuh rule levels (0-15)
 LEVEL_MAP = {
