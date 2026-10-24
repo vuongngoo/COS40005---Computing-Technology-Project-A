@@ -36,7 +36,7 @@ jobs:
           if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
             FILES=$(ls rules/*.yml 2>/dev/null)
           else
-            # A = added, M = modified; file bị xóa (D) thì bỏ qua
+            # A = added, M = modified; skipping deleted files
             FILES=$(git diff --name-only --diff-filter=AM "$BASE" "$GITHUB_SHA" -- 'rules/*.yml')
           fi
           echo "Changed rules: $FILES"
