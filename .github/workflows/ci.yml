@@ -23,7 +23,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install pyyaml
+        run: pip install pyyaml pysigma
 
       - name: Find changed rules
         id: changed
@@ -51,6 +51,12 @@ jobs:
         env:
           FILES: ${{ steps.changed.outputs.files }}
         run: echo "$FILES" | xargs -d '\n' python scripts/process_rules.py
+
+      - name: Convert to Wazuh
+        if: steps.changed.outputs.files != ''
+        env:
+          FILES: ${{ steps.changed.outputs.files }}
+        run: echo "$FILES" | xargs -d '\n' python scripts/convert_wazuh.py
 
       - name: Save output
         if: always() && steps.changed.outputs.files != ''
