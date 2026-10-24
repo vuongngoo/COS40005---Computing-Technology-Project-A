@@ -1,0 +1,26 @@
+title: Office Application Spawns Command Shell
+id: 7b0f1c3e-5a41-4f0e-9c1d-2f6a8e3b9d10
+status: experimental
+description: Detects Word, Excel or PowerPoint launching cmd or PowerShell.
+author: CAP-07 team
+date: 2026-10-21
+tags:
+  - attack.execution
+  - attack.t1059.003
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_parent:
+    ParentImage|endswith:
+      - '\winword.exe'
+      - '\excel.exe'
+      - '\powerpnt.exe'
+  selection_child:
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+  condition: selection_parent and selection_child
+falsepositives:
+  - Legitimate macros or add-ins that run scripts
+level: medium
