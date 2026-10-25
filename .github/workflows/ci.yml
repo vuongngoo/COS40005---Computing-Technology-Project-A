@@ -12,9 +12,6 @@ permissions:
   contents: read
 
 jobs:
-  # 1. Checks
-  #    This job name ("process-rules") is what you mark as a
-  #    required status check in branch protection.
   process-rules:
     runs-on: ubuntu-latest
     steps:
@@ -62,13 +59,6 @@ jobs:
           FILES: ${{ steps.changed.outputs.files }}
         run: echo "$FILES" | xargs -d '\n' python scripts/convert_wazuh.py
 
-      # Enable once replay_and_score.py exists (exit 1 if targets are missed)
-      # - name: Replay logs and score detection / false-positive rates
-      #   if: steps.changed.outputs.files != ''
-      #   env:
-      #     FILES: ${{ steps.changed.outputs.files }}
-      #   run: echo "$FILES" | xargs -d '\n' python scripts/replay_and_score.py
-
       - name: Save output
         if: always() && steps.changed.outputs.files != ''
         uses: actions/upload-artifact@v4
@@ -76,9 +66,6 @@ jobs:
           name: converted-rules
           path: out/
 
-  # 2. Auto-merge. Turns on auto-merge; GitHub merges
-  #    the PR once every required check is green.
-  
   automerge:
     needs: process-rules
     if: github.event_name == 'pull_request'
@@ -93,15 +80,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr merge --auto --squash "$PR_URL"
 
-  # 3. Deploy to Wazuh
-  #    Rebuilds the bundle from ALL rules, because process-rules
-  #    only converts the files that changed in this push.
-
   deploy:
     needs: process-rules
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest        # use a self-hosted runner if Wazuh is not reachable from the internet
-    environment: production       # optional: add required reviewers for a manual approval gate
+    runs-on: ubuntu-latest  
     steps:
       - uses: actions/checkout@v4
 
@@ -117,7 +99,22 @@ jobs:
           python scripts/process_rules.py
           python scripts/convert_wazuh.py
 
+      - name: Dry run (testing mode, nothing is sent to Wazuh)
+        if: vars.WAZUH_DEPLOY != 'true'
+        run: |
+          echo "Dry run: this bundle would be deployed to /var/ossec/etc/rules/sigma_rules.xml"
+          ls -l out/converted/
+          head -50 out/converted/sigma_rules_bundle.xml
+
+      - name: Save bundle for inspection
+        if: vars.WAZUH_DEPLOY != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-bundle-dry-run
+          path: out/converted/sigma_rules_bundle.xml
+
       - name: Deploy bundle to Wazuh manager
+        if: vars.WAZUH_DEPLOY == 'true'
         env:
           SSH_KEY: ${{ secrets.WAZUH_SSH_KEY }}
           WAZUH_USER: ${{ secrets.WAZUH_USER }}
