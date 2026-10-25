@@ -1,6 +1,7 @@
 name: CI
 on:
   push:
+    branches: [main]
     paths:
       - 'rules/**'
   pull_request:
@@ -11,6 +12,9 @@ permissions:
   contents: read
 
 jobs:
+  # 1. Checks
+  #    This job name ("process-rules") is what you mark as a
+  #    required status check in branch protection.
   process-rules:
     runs-on: ubuntu-latest
     steps:
@@ -58,9 +62,85 @@ jobs:
           FILES: ${{ steps.changed.outputs.files }}
         run: echo "$FILES" | xargs -d '\n' python scripts/convert_wazuh.py
 
+      # Enable once replay_and_score.py exists (exit 1 if targets are missed)
+      # - name: Replay logs and score detection / false-positive rates
+      #   if: steps.changed.outputs.files != ''
+      #   env:
+      #     FILES: ${{ steps.changed.outputs.files }}
+      #   run: echo "$FILES" | xargs -d '\n' python scripts/replay_and_score.py
+
       - name: Save output
         if: always() && steps.changed.outputs.files != ''
         uses: actions/upload-artifact@v4
         with:
           name: converted-rules
           path: out/
+
+  # 2. Auto-merge. Turns on auto-merge; GitHub merges
+  #    the PR once every required check is green.
+  
+  automerge:
+    needs: process-rules
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Enable auto-merge
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "$PR_URL"
+
+  # 3. Deploy to Wazuh
+  #    Rebuilds the bundle from ALL rules, because process-rules
+  #    only converts the files that changed in this push.
+
+  deploy:
+    needs: process-rules
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest        # use a self-hosted runner if Wazuh is not reachable from the internet
+    environment: production       # optional: add required reviewers for a manual approval gate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml pysigma
+
+      - name: Validate and convert ALL rules
+        run: |
+          python scripts/process_rules.py
+          python scripts/convert_wazuh.py
+
+      - name: Deploy bundle to Wazuh manager
+        env:
+          SSH_KEY: ${{ secrets.WAZUH_SSH_KEY }}
+          WAZUH_USER: ${{ secrets.WAZUH_USER }}
+          WAZUH_HOST: ${{ secrets.WAZUH_HOST }}
+        run: |
+          install -m 600 /dev/null key
+          printf '%s\n' "$SSH_KEY" > key
+          SSH="ssh -i key -o StrictHostKeyChecking=accept-new"
+
+          scp -i key -o StrictHostKeyChecking=accept-new \
+            out/converted/sigma_rules_bundle.xml \
+            "$WAZUH_USER@$WAZUH_HOST:/tmp/sigma_rules.xml"
+
+          $SSH "$WAZUH_USER@$WAZUH_HOST" '
+            set -e
+            RULES=/var/ossec/etc/rules/sigma_rules.xml
+            [ -f "$RULES" ] && cp "$RULES" "$RULES.bak"
+            cp /tmp/sigma_rules.xml "$RULES"
+            if /var/ossec/bin/wazuh-analysisd -t; then
+              systemctl restart wazuh-manager
+            else
+              echo "Rule test failed, restoring previous rules"
+              [ -f "$RULES.bak" ] && cp "$RULES.bak" "$RULES"
+              exit 1
+            fi
+          '
