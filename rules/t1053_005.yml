@@ -1,0 +1,30 @@
+title: Scheduled Task Created for Persistence (OnStart / OnLogon)
+id: d9df682c-e650-4ef9-8dde-77fafe212eb5
+status: experimental
+description: Detects schtasks.exe creating a task that runs at startup or logon, as emulated by Atomic Red Team T1053.005-1.
+references:
+    - https://attack.mitre.org/techniques/T1053/005/
+    - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1053/T1053.005/T1053.005.md
+author: Group 7 - CAP-07
+date: 2026-10-26
+tags:
+    - attack.execution
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.t1053.005
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_img:
+        Image|endswith: '\schtasks.exe'
+    selection_create:
+        CommandLine|contains: '/create'
+    selection_trigger:
+        CommandLine|contains:
+            - '/sc onstart'
+            - '/sc onlogon'
+    condition: all of selection_*
+falsepositives:
+    - Software installers and IT management tools that register startup tasks
+level: medium
