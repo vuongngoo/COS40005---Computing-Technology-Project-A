@@ -1,0 +1,32 @@
+title: Suspicious Process Access to LSASS Memory
+id: 73167c0c-0201-4a34-937d-f0352dccc9a4
+status: experimental
+description: Detects a process opening a handle to lsass.exe with access rights commonly used to dump credentials (Sysmon Event ID 10).
+references:
+    - https://attack.mitre.org/techniques/T1003/001/
+author: Group 7 - CAP-07
+date: 2026-10-26
+tags:
+    - attack.credential-access
+    - attack.t1003.001
+logsource:
+    category: process_access
+    product: windows
+detection:
+    selection:
+        TargetImage|endswith: '\lsass.exe'
+        GrantedAccess|contains:
+            - '0x1010'
+            - '0x1410'
+            - '0x1438'
+            - '0x143a'
+            - '0x1fffff'
+    filter_system:
+        SourceImage|startswith:
+            - 'C:\Windows\System32\'
+            - 'C:\Windows\SysWOW64\'
+            - 'C:\Program Files\Windows Defender\'
+    condition: selection and not filter_system
+falsepositives:
+    - Security or EDR products that legitimately read LSASS (add them to the filter after review)
+level: high
