@@ -9,7 +9,7 @@ date: 2026-10-26
 tags:
     - attack.persistence
     - attack.privilege-escalation
-    - attack.t1547.001
+
 logsource:
     category: registry_set
     product: windows
