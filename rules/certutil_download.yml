@@ -6,7 +6,6 @@ author: CAP-07 team
 date: 2026-10-23
 tags:
   - attack.command_and_control
-  - attack.t1105
 logsource:
   category: process_creation
   product: windows
