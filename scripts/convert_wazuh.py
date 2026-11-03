@@ -293,7 +293,9 @@ def convert_file(path, backend):
         count += len(branches)
         chunks.append(xml)
     body = "\n".join(chunks)
-    return (f'<!-- Generated from {path.name} by convert_to_wazuh.py - do not edit -->\n'
+    
+    comment_name = path.name.replace("--", "- -") # "--" is illegal inside an XML comment and would make Wazuh reject the whole file
+    return (f'<!-- Generated from {comment_name} by convert_to_wazuh.py - do not edit -->\n'
             f'<group name="sigma,">\n{body}\n</group>\n'), first_id, count
  
  
