@@ -78,9 +78,21 @@ def _not(dnf):
 _PCRE_META = re.compile(r"([.^$*+?{}\[\]\\|()])")
  
  
-def _glob_to_pcre(sigma_string):
+def _glob_to_pcre(sigma_string, anchored=True):
+    """
+    anchored=True  : whole-value match (^...$), used for field values.
+    anchored=False : substring match, used for keyword (field-less) searches.
+    """
+    parts = list(sigma_string.s)
+    leading_wildcard = bool(parts) and parts[0] == SpecialChars.WILDCARD_MULTI
+    if leading_wildcard:
+        parts = parts[1:]
+    trailing_wildcard = bool(parts) and parts[-1] == SpecialChars.WILDCARD_MULTI
+    if trailing_wildcard:
+        parts = parts[:-1]
+ 
     out = []
-    for part in sigma_string.s:
+    for part in parts:
         if isinstance(part, str):
             out.append(_PCRE_META.sub(r"\\\1", part))
         elif part == SpecialChars.WILDCARD_MULTI:
@@ -92,15 +104,12 @@ def _glob_to_pcre(sigma_string):
                 f"unsupported element in value: {part!r}"
             )
     pattern = "".join(out)
-    # Wazuh pcre2 is an unanchored search; trim redundant ^.* / .*$
-    if pattern.startswith(".*"):
-        pattern = pattern[2:]
-    else:
-        pattern = "^" + pattern
-    if pattern.endswith(".*") and not pattern.endswith("\\.*"):
-        pattern = pattern[:-2]
-    else:
-        pattern = pattern + "$"
+    
+    if anchored:
+        if not leading_wildcard:
+            pattern = "^" + pattern
+        if not trailing_wildcard:
+            pattern = pattern + "$"
     return pattern
  
  
@@ -168,7 +177,7 @@ class WazuhBackend(Backend):
  
     # keyword searches (no field): matched against the whole log
     def convert_condition_val_str(self, cond, state):
-        return [[(None, "(?i)" + _glob_to_pcre(cond.value), False)]]
+        return [[(None, "(?i)" + _glob_to_pcre(cond.value, anchored=False), False)]]
  
     def convert_condition_val_re(self, cond, state):
         return [[(None, cond.value.regexp, False)]]
