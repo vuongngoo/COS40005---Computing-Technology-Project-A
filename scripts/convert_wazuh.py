@@ -165,22 +165,25 @@ class WazuhBackend(Backend):
         escaped = _PCRE_META.sub(r"\\\1", str(cond.value))
         return [[(self.wazuh_field(cond.field), f"^{escaped}$", False)]]
  
-    def convert_condition_field_eq_val_re(self, cond, state):
+    @staticmethod
+    def _regex_pattern(value):
         flags = ""
         for flag, letter in ((SigmaRegularExpressionFlag.IGNORECASE, "i"),
                              (SigmaRegularExpressionFlag.MULTILINE, "m"),
                              (SigmaRegularExpressionFlag.DOTALL, "s")):
-            if flag in (cond.value.flags or ()):
+            if flag in (value.flags or ()):
                 flags += letter
-        pat = (f"(?{flags})" if flags else "") + cond.value.regexp
-        return [[(self.wazuh_field(cond.field), pat, False)]]
+        return (f"(?{flags})" if flags else "") + str(value.regexp)
+ 
+    def convert_condition_field_eq_val_re(self, cond, state):
+        return [[(self.wazuh_field(cond.field), self._regex_pattern(cond.value), False)]]
  
     # keyword searches (no field): matched against the whole log
     def convert_condition_val_str(self, cond, state):
         return [[(None, "(?i)" + _glob_to_pcre(cond.value, anchored=False), False)]]
  
     def convert_condition_val_re(self, cond, state):
-        return [[(None, cond.value.regexp, False)]]
+        return [[(None, self._regex_pattern(cond.value), False)]]
  
     def convert_condition_val_num(self, cond, state):
         return [[(None, _PCRE_META.sub(r"\\\1", str(cond.value)), False)]]
@@ -291,16 +294,21 @@ def convert_file(path, backend):
     rules = [r for r in collection.rules if isinstance(r, SigmaRule)]
     if not rules:
         raise SigmaFeatureNotSupportedByBackendError("no (non-correlation) Sigma rule found")
-    chunks, first_id, count = [], None, 0
+    chunks, first_id, count, seen_bases = [], None, 0, {}
     for rule in rules:
         queries = backend.convert_rule(rule)
         if not queries:
             raise SigmaFeatureNotSupportedByBackendError("conversion produced no rule")
-        branches = queries[0]
-        base, xml = rule_to_xml(rule, branches)
-        first_id = first_id or base
-        count += len(branches)
-        chunks.append(xml)
+    branches = [branch for query in queries for branch in query]
+    if len(branches) > MAX_BRANCHES:
+        raise SigmaFeatureNotSupportedByBackendError( f"rule expands to {len(branches)} Wazuh rules (limit {MAX_BRANCHES}); ""simplify the rule or split it" )
+    base, xml = rule_to_xml(rule, branches)
+    if base in seen_bases:
+        raise SigmaFeatureNotSupportedByBackendError( f"rules '{seen_bases[base]}' and '{rule.title}' in the same file map to " f"the same Wazuh rule ID block {base}" )
+    seen_bases[base] = rule.title
+    first_id = first_id or base
+    count += len(branches)
+    chunks.append(xml)
     body = "\n".join(chunks)
     
     comment_name = path.name.replace("--", "- -") # "--" is illegal inside an XML comment and would make Wazuh reject the whole file
