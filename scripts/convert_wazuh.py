@@ -48,6 +48,7 @@ OUT = ROOT / "out" / "wazuh"
 LOGSOURCE_PARENT_GROUP = {
     ("windows", "process_creation"): "sysmon_event1",
     ("windows", "network_connection"): "sysmon_event3",
+    ("windows", "process_access"): "sysmon_event_10",
     ("windows", "file_event"): "sysmon_event_11",
 }
  
