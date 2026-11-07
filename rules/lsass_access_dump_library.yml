@@ -1,0 +1,29 @@
+title: LSASS Memory Access With Dump Library In Call Trace
+id: 011e160d-4e72-42d5-a472-dea12f11c283
+status: experimental
+description: Detects a process opening a handle to lsass.exe where the call trace contains dbghelp.dll or dbgcore.dll, the libraries used by MiniDumpWriteDump to dump credentials (Sysmon Event ID 10).
+references:
+    - https://attack.mitre.org/techniques/T1003/001/
+author: Group 7 - CAP-07
+date: 2026-10-27
+tags:
+    - attack.credential-access
+    - attack.t1003.001
+logsource:
+    category: process_access
+    product: windows
+detection:
+    selection:
+        TargetImage|endswith: '\lsass.exe'
+        CallTrace|contains:
+            - 'dbghelp.dll'
+            - 'dbgcore.dll'
+    filter_known:
+        SourceImage|endswith:
+            - '\werfault.exe'
+            - '\msmpeng.exe'
+    condition: selection and not filter_known
+falsepositives:
+    - Windows Error Reporting or security products that legitimately dump or scan LSASS (add them to the filter after review)
+    - Administrators or support staff creating a process dump on purpose for troubleshooting
+level: high
