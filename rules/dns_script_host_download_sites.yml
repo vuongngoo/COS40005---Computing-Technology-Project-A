@@ -1,0 +1,38 @@
+title: Script Host Or Office App Resolving A Download Or Tunnel Site
+id: 2925d010-fc4a-4110-b8d6-a501dd8a9008
+status: experimental
+description: Detects Office applications, script hosts or PowerShell resolving paste sites, raw code hosting or tunnelling services often used to fetch a payload (Sysmon Event ID 22).
+references:
+    - https://attack.mitre.org/techniques/T1105/
+author: Group 7 - CAP-07
+date: 2026-10-29
+tags:
+    - attack.command-and-control
+    - attack.t1105
+logsource:
+    category: dns_query
+    product: windows
+detection:
+    selection_img:
+        Image|endswith:
+            - '\winword.exe'
+            - '\excel.exe'
+            - '\powerpnt.exe'
+            - '\mshta.exe'
+            - '\wscript.exe'
+            - '\cscript.exe'
+            - '\powershell.exe'
+            - '\pwsh.exe'
+    selection_domain:
+        QueryName|endswith:
+            - 'pastebin.com'
+            - 'raw.githubusercontent.com'
+            - 'transfer.sh'
+            - 'ngrok.io'
+            - 'trycloudflare.com'
+            - 'cdn.discordapp.com'
+    condition: selection_img and selection_domain
+falsepositives:
+    - Administrators running PowerShell scripts that legitimately download from GitHub
+    - Documents with add-ins that fetch content from these services
+level: medium

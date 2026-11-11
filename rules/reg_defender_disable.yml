@@ -1,0 +1,25 @@
+title: Microsoft Defender Disabled Through The Registry
+id: 0b2df3e3-c78d-445b-a7ac-e38b8ac7ba19
+status: experimental
+description: Detects DisableAntiSpyware or DisableRealtimeMonitoring being set to 1 in the Windows Defender policy keys, a way to switch off endpoint protection (Sysmon Event ID 13).
+references:
+    - https://attack.mitre.org/techniques/T1562/001/
+author: Group 7 - CAP-07
+date: 2026-10-29
+tags:
+    - attack.defense-evasion
+    - attack.t1562.001
+logsource:
+    category: registry_event
+    product: windows
+detection:
+    selection:
+        EventType: 'SetValue'
+        TargetObject|endswith:
+            - '\Windows Defender\DisableAntiSpyware'
+            - '\Windows Defender\Real-Time Protection\DisableRealtimeMonitoring'
+        Details: 'DWORD (0x00000001)'
+    condition: selection
+falsepositives:
+    - Administrators or deployment tools that disable Defender on purpose, for example when another security product is installed
+level: high

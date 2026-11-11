@@ -1,0 +1,33 @@
+title: DNS Query To A Dynamic DNS Provider
+id: e4c148eb-f19c-4751-a821-e721b67893fe
+status: experimental
+description: Detects a non-browser process resolving a domain under a free dynamic DNS provider, often used for command and control infrastructure that changes address (Sysmon Event ID 22).
+references:
+    - https://attack.mitre.org/techniques/T1568/
+author: Group 7 - CAP-07
+date: 2026-10-29
+tags:
+    - attack.command-and-control
+    - attack.t1568
+logsource:
+    category: dns_query
+    product: windows
+detection:
+    selection:
+        QueryName|endswith:
+            - '.duckdns.org'
+            - '.no-ip.org'
+            - '.no-ip.biz'
+            - '.ddns.net'
+            - '.hopto.org'
+            - '.zapto.org'
+    filter_browser:
+        Image|endswith:
+            - '\chrome.exe'
+            - '\msedge.exe'
+            - '\firefox.exe'
+    condition: selection and not filter_browser
+falsepositives:
+    - Remote access to a home or lab machine that uses a dynamic DNS name
+    - Legitimate small-business software that relies on dynamic DNS
+level: medium
