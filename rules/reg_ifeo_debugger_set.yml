@@ -1,0 +1,27 @@
+title: Image File Execution Options Debugger Value Set
+id: 6da8b66b-f313-4df8-ac86-3728da9f4b8c
+status: experimental
+description: Detects a Debugger or GlobalFlag value set under Image File Execution Options, which can make Windows start an attacker program in place of a legitimate one or run it after a process exits (Sysmon Event ID 13).
+references:
+    - https://attack.mitre.org/techniques/T1546/012/
+author: Group 7 - CAP-07
+date: 2026-10-29
+tags:
+    - attack.persistence
+    - attack.privilege-escalation
+    - attack.t1546.012
+logsource:
+    category: registry_event
+    product: windows
+detection:
+    selection:
+        EventType: 'SetValue'
+        TargetObject|contains: '\Image File Execution Options\'
+        TargetObject|endswith:
+            - '\Debugger'
+            - '\GlobalFlag'
+    condition: selection
+falsepositives:
+    - Debugging tools that register themselves as the system debugger
+    - Tools that replace Task Manager through an IFEO Debugger entry
+level: high
