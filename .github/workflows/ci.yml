@@ -122,6 +122,18 @@ jobs:
           python scripts/process_rules.py
           python scripts/convert_wazuh.py
 
+      # FIX: safety net. If convert_wazuh.py did not create the bundle itself,
+      # join the per-rule XML files into it. Does nothing if the bundle exists.
+      - name: Make sure the bundle exists
+        run: |
+          if [ ! -s out/wazuh/sigma_rules_bundle.xml ]; then
+            echo "Bundle not created by convert script, building it from out/wazuh/*.xml"
+            ls out/wazuh/*.xml > /dev/null
+            cat out/wazuh/*.xml > /tmp/sigma_rules_bundle.xml
+            mv /tmp/sigma_rules_bundle.xml out/wazuh/sigma_rules_bundle.xml
+          fi
+          test -s out/wazuh/sigma_rules_bundle.xml
+
       - name: Dry run (testing mode, nothing is sent to Wazuh)
         run: |
           echo "Dry run: this bundle would be deployed to /var/ossec/etc/rules/sigma_rules.xml"
@@ -161,6 +173,17 @@ jobs:
         run: |
           .venv/bin/python scripts/process_rules.py
           .venv/bin/python scripts/convert_wazuh.py
+
+      # FIX: same safety net as in the dry-run job (see above).
+      - name: Make sure the bundle exists
+        run: |
+          if [ ! -s out/wazuh/sigma_rules_bundle.xml ]; then
+            echo "Bundle not created by convert script, building it from out/wazuh/*.xml"
+            ls out/wazuh/*.xml > /dev/null
+            cat out/wazuh/*.xml > /tmp/sigma_rules_bundle.xml
+            mv /tmp/sigma_rules_bundle.xml out/wazuh/sigma_rules_bundle.xml
+          fi
+          test -s out/wazuh/sigma_rules_bundle.xml
 
       - name: Deploy bundle to Wazuh through the API
         env:
