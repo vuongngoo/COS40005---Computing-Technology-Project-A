@@ -12,11 +12,6 @@ permissions:
   contents: read
 
 jobs:
-  # ---------------------------------------------------------------
-  # 1. Checks (runs on every PR and on every push to main)
-  #    This job name ("process-rules") is what you mark as a
-  #    required status check in branch protection.
-  # ---------------------------------------------------------------
   process-rules:
     runs-on: ubuntu-latest
     steps:
@@ -64,13 +59,6 @@ jobs:
           FILES: ${{ steps.changed.outputs.files }}
         run: echo "$FILES" | xargs -d '\n' python scripts/convert_wazuh.py
 
-      # Enable once replay_and_score.py exists (exit 1 if targets are missed)
-      # - name: Replay logs and score detection / false-positive rates
-      #   if: steps.changed.outputs.files != ''
-      #   env:
-      #     FILES: ${{ steps.changed.outputs.files }}
-      #   run: echo "$FILES" | xargs -d '\n' python scripts/replay_and_score.py
-
       - name: Save output
         if: always() && steps.changed.outputs.files != ''
         uses: actions/upload-artifact@v4
@@ -78,10 +66,6 @@ jobs:
           name: converted-rules
           path: out/
 
-  # ---------------------------------------------------------------
-  # 2. Auto-merge (PRs only). Turns on auto-merge; GitHub merges
-  #    the PR once every required check is green.
-  # ---------------------------------------------------------------
   automerge:
     needs: process-rules
     if: github.event_name == 'pull_request'
@@ -96,17 +80,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr merge --auto --squash "$PR_URL"
 
-  # ---------------------------------------------------------------
-  # 3a. Deploy DRY RUN (default). Runs on a GitHub-hosted runner after a
-  #     merge to main. Nothing is sent to Wazuh: it builds the bundle,
-  #     prints it and saves it as an artifact.
-  #     Rebuilds from ALL rules, because process-rules only converts the
-  #     files that changed in this push.
-  # ---------------------------------------------------------------
   deploy:
     needs: process-rules
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.WAZUH_DEPLOY != 'true'
-    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest  
     steps:
       - uses: actions/checkout@v4
 
@@ -121,51 +98,52 @@ jobs:
         run: |
           python scripts/process_rules.py
           python scripts/convert_wazuh.py
+          # FIX: convert_wazuh.py only writes one XML per rule into out/wazuh/.
+          # Join them into the single bundle file the later steps expect.
+          # (Runs only if both scripts above succeeded: GitHub runs this with bash -e.)
+          mkdir -p out/converted
+          cat out/wazuh/*.xml > out/converted/sigma_rules_bundle.xml
+          test -s out/converted/sigma_rules_bundle.xml
 
       - name: Dry run (testing mode, nothing is sent to Wazuh)
+        if: vars.WAZUH_DEPLOY != 'true'
         run: |
           echo "Dry run: this bundle would be deployed to /var/ossec/etc/rules/sigma_rules.xml"
-          ls -l out/wazuh/
-          head -50 out/wazuh/sigma_rules_bundle.xml
+          ls -l out/converted/
+          head -50 out/converted/sigma_rules_bundle.xml
 
       - name: Save bundle for inspection
+        if: vars.WAZUH_DEPLOY != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: wazuh-bundle-dry-run
-          path: out/wazuh/sigma_rules_bundle.xml
+          path: out/converted/sigma_rules_bundle.xml
 
-  # ---------------------------------------------------------------
-  # 3b. REAL deploy to a Wazuh manager running in Docker.
-  #     Only runs when the repository variable WAZUH_DEPLOY = true.
-  #     Runs on a SELF-HOSTED runner installed on the machine that runs
-  #     Docker, because GitHub's servers cannot reach a Docker container
-  #     on your own computer. Needs no SSH keys or secrets.
-  #
-  #     Optional repository variable WAZUH_CONTAINER = name of the Wazuh
-  #     manager container (default: single-node-wazuh.manager-1).
-  #     Check yours with:  docker ps --format "{{.Names}}"
-  # ---------------------------------------------------------------
-  deploy-wazuh:
-    needs: process-rules
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.WAZUH_DEPLOY == 'true'
-    runs-on: [self-hosted, linux]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          python3 -m venv .venv
-          .venv/bin/pip install pyyaml pysigma
-
-      - name: Validate and convert ALL rules
-        run: |
-          .venv/bin/python scripts/process_rules.py
-          .venv/bin/python scripts/convert_wazuh.py
-
-      - name: Deploy bundle to Wazuh through the API
+      - name: Deploy bundle to Wazuh manager
+        if: vars.WAZUH_DEPLOY == 'true'
         env:
-          WAZUH_API_URL: ${{ vars.WAZUH_API_URL }}
-          WAZUH_API_USER: ${{ secrets.WAZUH_API_USER }}
-          WAZUH_API_PASSWORD: ${{ secrets.WAZUH_API_PASSWORD }}
-          WAZUH_API_VERIFY_TLS: ${{ vars.WAZUH_API_VERIFY_TLS }}
-        run: python3 scripts/deploy_wazuh_api.py out/wazuh/sigma_rules_bundle.xml
+          SSH_KEY: ${{ secrets.WAZUH_SSH_KEY }}
+          WAZUH_USER: ${{ secrets.WAZUH_USER }}
+          WAZUH_HOST: ${{ secrets.WAZUH_HOST }}
+        run: |
+          install -m 600 /dev/null key
+          printf '%s\n' "$SSH_KEY" > key
+          SSH="ssh -i key -o StrictHostKeyChecking=accept-new"
+
+          scp -i key -o StrictHostKeyChecking=accept-new \
+            out/converted/sigma_rules_bundle.xml \
+            "$WAZUH_USER@$WAZUH_HOST:/tmp/sigma_rules.xml"
+
+          $SSH "$WAZUH_USER@$WAZUH_HOST" '
+            set -e
+            RULES=/var/ossec/etc/rules/sigma_rules.xml
+            [ -f "$RULES" ] && cp "$RULES" "$RULES.bak"
+            cp /tmp/sigma_rules.xml "$RULES"
+            if /var/ossec/bin/wazuh-analysisd -t; then
+              systemctl restart wazuh-manager
+            else
+              echo "Rule test failed, restoring previous rules"
+              [ -f "$RULES.bak" ] && cp "$RULES.bak" "$RULES"
+              exit 1
+            fi
+          '
