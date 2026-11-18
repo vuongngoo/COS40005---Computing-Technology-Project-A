@@ -59,18 +59,17 @@ def check_attack_tags(tags, valid_attack_ids):
     if not isinstance(tags, list):
         return ["tags must be a list"]
 
-    attack_tags = [
-        str(t).lower()
-        for t in tags
-        if str(t).lower().startswith("attack.")
-    ]
+    for tag in tags:
+        tag = str(tag).lower()
 
-    if not attack_tags:
-        problems.append("no ATT&CK technique tag found")
-        return problems
+        if not tag.startswith("attack."):
+            continue
 
-    for tag in attack_tags:
         attack_id = tag.removeprefix("attack.")
+
+        # Only validate technique/sub-technique IDs
+        if not re.fullmatch(r"t\d{4}(\.\d{3})?", attack_id):
+            continue
 
         if attack_id not in valid_attack_ids:
             problems.append(
@@ -78,8 +77,17 @@ def check_attack_tags(tags, valid_attack_ids):
                 "or is deprecated/revoked"
             )
 
-    return problems
+    # Require at least one valid technique tag
+    has_technique = any(
+        re.fullmatch(r"attack\.t\d{4}(\.\d{3})?", str(tag), re.IGNORECASE)
+        and str(tag).lower().removeprefix("attack.") in valid_attack_ids
+        for tag in tags
+    )
 
+    if not has_technique:
+        problems.append("no valid ATT&CK technique tag found")
+
+    return problems
 
 def error(path, msg):
     # "::error" makes GitHub show the message on the run page
