@@ -198,12 +198,12 @@ def to_query(detection):
 def main():
     args = sys.argv[1:]
 
-   try:
+    try:
         valid_attack_ids = load_attack_ids()
     except RuntimeError as e:
         print(f"ERROR: {e}")
         sys.exit(1)
-  
+
     OUT.mkdir(parents=True, exist_ok=True)
     rows, failed = [], False
 
@@ -215,6 +215,11 @@ def main():
             rows.append((path.name, "FAIL", "invalid YAML"))
             failed = True
             continue
+
+        problems = check(path, rule, valid_attack_ids)
+
+        if not problems:
+            problems = check_with_pysigma(path)
 
         problems = check(path, rule, valid_attack_ids)
         if not problems:                       # only ask pySigma once the basics are right
