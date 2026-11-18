@@ -7,7 +7,7 @@ Usage:
 Fails (exit 1) with a clear message if a checked rule is invalid.
 Needs: pip install pyyaml pysigma
 """
-import datetime, json, os, pathlib, re, sys, uuid, yaml
+import datetime, json, os, pathlib, re, sys, uuid, yaml, requests
 
 from sigma.collection import SigmaCollection
 
@@ -17,6 +17,68 @@ REQUIRED = ["title", "id", "status", "author", "date", "tags",
             "logsource", "detection", "level", "falsepositives"]
 LEVELS = {"informational", "low", "medium", "high", "critical"}
 STATUSES = {"stable", "test", "experimental", "deprecated", "unsupported"}
+
+
+
+ATTACK_URL = (
+    "https://raw.githubusercontent.com/mitre-attack/"
+    "attack-stix-data/master/enterprise-attack/enterprise-attack.json"
+)""" real attack """
+
+def load_attack_ids():
+    try:
+        response = requests.get(ATTACK_URL, timeout=30)
+        response.raise_for_status()
+        dataset = response.json()
+
+    except requests.RequestException as e:
+        raise RuntimeError(f"Cannot download MITRE ATT&CK dataset: {e}")
+
+    valid_ids = set()
+
+    for obj in dataset["objects"]:
+        if obj.get("type") != "attack-pattern":
+            continue
+
+        if obj.get("revoked") or obj.get("x_mitre_deprecated"):
+            continue
+
+        for ref in obj.get("external_references", []):
+            if ref.get("source_name") == "mitre-attack":
+                external_id = ref.get("external_id")
+
+                if external_id:
+                    valid_ids.add(external_id.lower())
+
+    return valid_ids
+
+
+def check_attack_tags(tags, valid_attack_ids):
+    problems = []
+
+    if not isinstance(tags, list):
+        return ["tags must be a list"]
+
+    attack_tags = [
+        str(t).lower()
+        for t in tags
+        if str(t).lower().startswith("attack.")
+    ]
+
+    if not attack_tags:
+        problems.append("no ATT&CK technique tag found")
+        return problems
+
+    for tag in attack_tags:
+        attack_id = tag.removeprefix("attack.")
+
+        if attack_id not in valid_attack_ids:
+            problems.append(
+                f"ATT&CK ID '{attack_id}' does not exist "
+                "or is deprecated/revoked"
+            )
+
+    return problems
 
 
 def error(path, msg):
@@ -66,7 +128,7 @@ def find_duplicates_by_id(path, rule_id):
     return sorted(dups)
 
 
-def check(path, rule):
+def check(path, rule,  valid_attack_ids):
     problems = []
     if not isinstance(rule, dict):
         return ["file is not a valid Sigma rule (not a YAML mapping)"]
@@ -98,8 +160,7 @@ def check(path, rule):
     if not isinstance(tags, list):
         problems.append("tags must be a list")
         tags = []
-    if not any(re.fullmatch(r"attack\.t\d{4}(\.\d{3})?", str(t).lower()) for t in tags):
-        problems.append("no valid ATT&CK technique tag (example: attack.t1059.003)")
+    problems.extend(check_attack_tags(tags, valid_attack_ids))
     det = rule.get("detection") or {}
     if "condition" not in det:
         problems.append("detection has no 'condition'")
@@ -136,6 +197,13 @@ def to_query(detection):
 
 def main():
     args = sys.argv[1:]
+
+   try:
+        valid_attack_ids = load_attack_ids()
+    except RuntimeError as e:
+        print(f"ERROR: {e}")
+        sys.exit(1)
+  
     OUT.mkdir(parents=True, exist_ok=True)
     rows, failed = [], False
 
@@ -148,7 +216,7 @@ def main():
             failed = True
             continue
 
-        problems = check(path, rule)
+        problems = check(path, rule, valid_attack_ids)
         if not problems:                       # only ask pySigma once the basics are right
             problems = check_with_pysigma(path)
         if problems:
