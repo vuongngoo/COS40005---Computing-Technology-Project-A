@@ -29,7 +29,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install pyyaml pysigma requests
+        run: pip install pyyaml pysigma
 
       - name: Find changed rules
         id: changed
