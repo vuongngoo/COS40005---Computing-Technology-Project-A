@@ -23,7 +23,7 @@ STATUSES = {"stable", "test", "experimental", "deprecated", "unsupported"}
 ATTACK_URL = (
     "https://raw.githubusercontent.com/mitre-attack/"
     "attack-stix-data/master/enterprise-attack/enterprise-attack.json"
-)""" real attack """
+)
 
 def load_attack_ids():
     try:
