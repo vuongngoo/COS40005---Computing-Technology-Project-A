@@ -1,0 +1,24 @@
+title: BITS Job Download via Bitsadmin
+id: fb0c8765-aca7-4fa9-a1fd-93333e65e30e
+status: experimental
+description: Detects use of bitsadmin.exe with the /transfer option to download or copy files, a living-off-the-land technique used to fetch payloads and persist.
+references:
+    - https://attack.mitre.org/techniques/T1197/
+author: Duy Hoang Nguyen
+date: 2026-11-19
+tags:
+    - attack.defense_evasion
+    - attack.persistence
+    - attack.t1197
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        Image|endswith: '\bitsadmin.exe'
+        CommandLine|contains: '/transfer'
+    condition: selection
+falsepositives:
+    - Administrators or deployment scripts that use bitsadmin to download files
+    - Legacy software installers that rely on BITS
+level: medium
