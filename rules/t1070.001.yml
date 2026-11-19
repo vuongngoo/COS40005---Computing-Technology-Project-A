@@ -1,0 +1,29 @@
+title: Windows Event Logs Cleared via Command Line
+id: f493f7a0-c2a7-4ee9-b6d7-c29caac07be8
+status: experimental
+description: Detects clearing of Windows event logs with wevtutil or PowerShell cmdlets.
+references:
+    - https://attack.mitre.org/techniques/T1070/001/
+author: Group 7 - CAP-07
+date: 2026-10-26
+tags:
+    - attack.defense-evasion
+    - attack.t1070.001
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_wevtutil:
+        Image|endswith: '\wevtutil.exe'
+        CommandLine|contains:
+            - ' cl '
+            - 'clear-log'
+    selection_ps:
+        CommandLine|contains:
+            - 'Clear-EventLog'
+            - 'Remove-EventLog'
+            - 'ClearEventLog'
+    condition: 1 of selection_*
+falsepositives:
+    - Administrators clearing logs during maintenance
+level: high
