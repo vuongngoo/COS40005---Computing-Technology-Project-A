@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-
 jobs:
   # ---------------------------------------------------------------
   # 1. Checks (runs on every PR and on every push to main)
@@ -19,6 +18,8 @@ jobs:
   # ---------------------------------------------------------------
   process-rules:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # this job only: lets it push the commit that removes rejected rules
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,7 +30,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install pyyaml pysigma
+        run: pip install pyyaml pysigma requests
 
       - name: Find changed rules
         id: changed
@@ -50,13 +51,29 @@ jobs:
             echo "files<<EOF"
             echo "$FILES"
             echo "EOF"
+            echo "base=$BASE"
           } >> "$GITHUB_OUTPUT"
 
       - name: Check and convert rules
         if: steps.changed.outputs.files != ''
         env:
           FILES: ${{ steps.changed.outputs.files }}
-        run: echo "$FILES" | xargs -d '\n' python scripts/process_rules.py
+          BASE_SHA: ${{ steps.changed.outputs.base }}
+        run: echo "$FILES" | xargs -d '\n' python scripts/process_rules.py --remove-failed
+
+      # Pushes the removal of rejected NEW rules. process_rules.py only deletes on a push to main,
+      # and only rules that are new in this push, so on pull requests this step finds nothing to do.
+      - name: Commit removal of rejected rules
+        if: always() && github.event_name == 'push' && steps.changed.outputs.files != ''
+        run: |
+          if [ -n "$(git status --porcelain -- rules/)" ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A rules/
+            git commit -m "CI: remove rejected rules (run ${{ github.run_id }})"
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
 
       - name: Convert to Wazuh
         if: steps.changed.outputs.files != ''
@@ -115,7 +132,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install pyyaml pysigma
+        run: pip install pyyaml pysigma requests
 
       - name: Validate and convert ALL rules
         run: |
@@ -167,7 +184,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m venv .venv
-          .venv/bin/pip install pyyaml pysigma
+          .venv/bin/pip install pyyaml pysigma requests
 
       - name: Validate and convert ALL rules
         run: |
