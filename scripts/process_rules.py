@@ -13,6 +13,7 @@ from sigma.collection import SigmaCollection
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RULES_DIR = ROOT / "rules"    
+REJECTED_DIR = ROOT / "out" / "rejected"
 OUT = ROOT / "out" / "converted"
 REQUIRED = ["title", "id", "status", "author", "date", "tags",
             "logsource", "detection", "level", "falsepositives"]
