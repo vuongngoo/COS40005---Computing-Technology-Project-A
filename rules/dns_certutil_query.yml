@@ -1,0 +1,28 @@
+title: Certutil Resolving A Non-Microsoft Domain
+id: e57e7e3c-0d72-47e6-a69f-ebc682b34f7f
+status: experimental
+description: Detects certutil.exe resolving a domain that is not a known certificate or update service, which can indicate it is being used to download a file (Sysmon Event ID 22).
+references:
+    - https://attack.mitre.org/techniques/T1105/
+author: Group 7 - CAP-07
+date: 2026-10-29
+tags:
+    - attack.command-and-control
+    - attack.t1105
+logsource:
+    category: dns_query
+    product: windows
+detection:
+    selection:
+        Image|endswith: '\certutil.exe'
+    filter_ca:
+        QueryName|endswith:
+            - '.microsoft.com'
+            - '.windowsupdate.com'
+            - '.digicert.com'
+            - '.globalsign.com'
+            - '.letsencrypt.org'
+    condition: selection and not filter_ca
+falsepositives:
+    - Certificate or CRL downloads from a certificate authority that is not in the filter list (add it after review)
+level: medium

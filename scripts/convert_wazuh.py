@@ -110,7 +110,16 @@ def _not(dnf):
  
  
 _PCRE_META = re.compile(r"([.^$*+?{}\[\]\\|()])")
- 
+
+def _escape_literal(text):
+    """Escape pcre2 metacharacters; every literal backslash becomes  \\\\+  (one or more)/ """
+    parts = []
+    for ch in text:
+      if ch == "\\":
+        parts.append(r"\\+")
+      else:
+        parts.append(_PCRE_META.sub(r"\\\1", ch))
+    return "".join(parts)
  
 def _glob_to_pcre(sigma_string, anchored=True):
     """
@@ -128,7 +137,7 @@ def _glob_to_pcre(sigma_string, anchored=True):
     out = []
     for part in parts:
         if isinstance(part, str):
-            out.append(_PCRE_META.sub(r"\\\1", part))
+            out.append(_escape_literal(part))
         elif part == SpecialChars.WILDCARD_MULTI:
             out.append(".*")
         elif part == SpecialChars.WILDCARD_SINGLE:

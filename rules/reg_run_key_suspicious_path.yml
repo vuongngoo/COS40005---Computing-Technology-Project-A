@@ -1,0 +1,32 @@
+title: Run Key Value Pointing To A User-Writable Path
+id: e717143d-f111-4edc-9ade-b06c298730f3
+status: experimental
+description: Detects a value written under a CurrentVersion Run or RunOnce key that points to a user-writable folder, a common persistence method (Sysmon Event ID 13).
+references:
+    - https://attack.mitre.org/techniques/T1547/001/
+author: Group 7 - CAP-07
+date: 2026-10-29
+tags:
+    - attack.persistence
+    - attack.t1547.001
+logsource:
+    category: registry_event
+    product: windows
+detection:
+    selection_key:
+        EventType: 'SetValue'
+        TargetObject|contains:
+            - '\CurrentVersion\Run\'
+            - '\CurrentVersion\RunOnce\'
+    selection_path:
+        Details|contains:
+            - '\AppData\'
+            - '\Temp\'
+            - '\Users\Public\'
+            - '\ProgramData\'
+    filter_onedrive:
+        Details|contains: '\Microsoft\OneDrive\'
+    condition: selection_key and selection_path and not filter_onedrive
+falsepositives:
+    - Legitimate per-user installers and updaters (for example chat or music clients) that register themselves under AppData
+level: medium
