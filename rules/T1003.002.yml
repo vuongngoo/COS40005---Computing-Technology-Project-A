@@ -1,0 +1,31 @@
+title: Registry Hive Dump of SAM, SECURITY or SYSTEM via Reg.exe
+id: ec004064-45ad-4eaa-b563-ec8901bb9028
+status: experimental
+description: Detects reg.exe saving or exporting the SAM, SECURITY or SYSTEM hives, used to extract local account password hashes offline.
+references:
+  - https://attack.mitre.org/techniques/T1003/002/
+author: Duy Tuan
+date: 2026/11/26
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: '\reg.exe'
+    CommandLine|contains:
+      - 'save hklm\sam'
+      - 'save hklm\security'
+      - 'save hklm\system'
+      - 'save hkey_local_machine\sam'
+      - 'save hkey_local_machine\security'
+      - 'save hkey_local_machine\system'
+      - 'export hklm\sam'
+      - 'export hklm\security'
+  condition: selection
+falsepositives:
+  - Backup or forensic tools that export registry hives
+  - Administrators saving the SYSTEM hive for troubleshooting
+level: high
+tags:
+  - attack.credential_access
+  - attack.t1003.002
