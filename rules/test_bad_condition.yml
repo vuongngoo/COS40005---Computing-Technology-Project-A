@@ -1,0 +1,23 @@
+title: TEST - Condition Refers To A Missing Selection
+id: c5c40d91-13f1-46bf-af8e-4fdc81243065
+status: experimental
+description: |
+    Deliberately broken rule for testing the CI. The condition uses
+    'filter_legit', but no selection with that name is defined.
+author: Giang Ngoc Vu
+date: 2026-10-26
+tags:
+    - attack.execution
+    - attack.t1059.001
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_powershell:
+        Image|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+    condition: selection_powershell and not filter_legit
+falsepositives:
+    - Test rule, not meant to be deployed
+level: medium
