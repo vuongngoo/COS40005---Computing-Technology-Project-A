@@ -12,6 +12,7 @@ logsource:
 detection:
   selection:
     Image|endswith: '\reg.exe'
+    CommandLine|contains: 'save hklm'
   condition: selection
 falsepositives:
   - Any legitimate use of reg.exe
