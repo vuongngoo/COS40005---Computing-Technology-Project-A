@@ -4,7 +4,7 @@ status: experimental
 description: Temporary debug rule, any reg.exe process creation.
 references:
   - https://attack.mitre.org/techniques/T1003/002/
-author: Duy Tuan
+author: Duy
 date: '2026-11-26'
 logsource:
   category: process_creation
