@@ -12,6 +12,7 @@ import datetime, json, os, pathlib, re, sys, uuid, yaml, requests, os, shutil, s
 from sigma.collection import SigmaCollection
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+RULES_DIR = ROOT / "rules"    
 OUT = ROOT / "out" / "converted"
 REQUIRED = ["title", "id", "status", "author", "date", "tags",
             "logsource", "detection", "level", "falsepositives"]
