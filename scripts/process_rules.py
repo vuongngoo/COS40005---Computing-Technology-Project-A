@@ -7,7 +7,7 @@ Usage:
 Fails (exit 1) with a clear message if a checked rule is invalid.
 Needs: pip install pyyaml pysigma
 """
-import datetime, json, os, pathlib, re, sys, uuid, yaml, requests
+import datetime, json, os, pathlib, re, sys, uuid, yaml, requests, os, shutil, subprocess
 
 from sigma.collection import SigmaCollection
 
@@ -24,7 +24,17 @@ ATTACK_URL = (
     "https://raw.githubusercontent.com/mitre-attack/"
     "attack-stix-data/master/enterprise-attack/enterprise-attack.json"
 )
-
+def is_new_file(path):
+    """True only if we can PROVE the file did not exist before this push (BASE_SHA)."""
+    base = os.environ.get("BASE_SHA", "")
+    if not base or set(base) == {"0"}:
+        return False
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True)
+    if git("cat-file", "-e", f"{base}^{{commit}}").returncode != 0:
+        return False                                   # unknown base: never guess
+    rel = path.resolve().relative_to(ROOT).as_posix()
+    return git("cat-file", "-e", f"{base}:{rel}").returncode != 0
+  
 def load_attack_ids():
     try:
         response = requests.get(ATTACK_URL, timeout=30)
@@ -203,72 +213,175 @@ def to_query(detection):
     return parts
 
 
+def remove_rejected_rules(invalid, changed_files_mode, enabled):
+    """invalid = [(path, problems)]. Returns {file name: what happened}.
+    A rule is deleted ONLY if all of these are true (otherwise it is kept and just reported):
+      1. --remove-failed was given
+      2. running in GitHub Actions on a push event
+      3. specific files were passed in (changed-files mode; a full scan never deletes)
+      4. the file is NEW in this push (an existing rule that was edited is never deleted)
+    A copy goes to out/rejected/ first, so the author can recover it from the artifact."""
+    actions = {}
+    in_push = (os.environ.get("GITHUB_ACTIONS") == "true"
+               and os.environ.get("GITHUB_EVENT_NAME") == "push")
+    for path, _problems in invalid:
+        if not enabled:
+            actions[path.name] = "kept"
+        elif not in_push:
+            actions[path.name] = "kept (not a push in CI)"
+        elif not changed_files_mode:
+            actions[path.name] = "kept (a full scan never deletes)"
+        elif path.resolve().parent != RULES_DIR.resolve() or path.suffix.lower() != ".yml":
+            actions[path.name] = "kept (not a rule file)"
+        elif not is_new_file(path):
+            actions[path.name] = "kept (existing rule: fix it, do not delete)"
+        else:
+            try:
+                REJECTED_DIR.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, REJECTED_DIR / path.name)
+                path.unlink()
+                actions[path.name] = "removed from rules/ (copy in artifact out/rejected/)"
+            except OSError as e:
+                actions[path.name] = f"kept (delete failed: {e})"
+    return actions
+          
 def main():
-    args = sys.argv[1:]
+    argv = sys.argv[1:]
+    remove = "--remove-failed" in argv
+    args = [a for a in argv if not a.startswith("--")]
 
+    # Download MITRE ATT&CK dataset.
     try:
         valid_attack_ids = load_attack_ids()
+
     except RuntimeError as e:
         print(f"ERROR: {e}")
         sys.exit(1)
 
     OUT.mkdir(parents=True, exist_ok=True)
-    rows, failed = [], False
 
-    for path in rule_files(args):
+    rows = []
+    invalid_files = []   # (path, problems) for every rule that failed
+    failed = False
+
+    files = rule_files(args)
+
+    # Validate each rule.
+    for path in files:
         try:
-            rule = yaml.safe_load(path.read_text(encoding="utf-8"))
-        except yaml.YAMLError as e:
-            error(path, f"invalid YAML: {e}")
-            rows.append((path.name, "FAIL", "invalid YAML"))
-            failed = True
-            continue
+            content = path.read_text(encoding="utf-8")
+            rule = yaml.safe_load(content)
 
-        problems = check(path, rule, valid_attack_ids)
+        except (yaml.YAMLError, UnicodeDecodeError) as e:
+            problems = [f"invalid YAML: {e}"]
 
-        if not problems:
-            problems = check_with_pysigma(path)
+        except OSError as e:
+            problems = [f"cannot read file: {e}"]
 
-        problems = check(path, rule, valid_attack_ids)
-        if not problems:                       # only ask pySigma once the basics are right
-            problems = check_with_pysigma(path)
+        else:
+            problems = check(path, rule, valid_attack_ids)
+
+            # Run pySigma only if basic validation passes.
+            if not problems:
+                problems = check_with_pysigma(path)
+
+        # Invalid rule: print the errors now, while the file still exists.
         if problems:
-            for p in problems:
-                error(path, p)
-            rows.append((path.name, "FAIL", "; ".join(problems)))
+            for problem in problems:
+                error(path, problem)
+
+            rows.append(
+                (path.name, "FAIL", "; ".join(problems))
+            )
+
+            invalid_files.append((path, problems))
             failed = True
             continue
 
+        # Valid rule: convert to demo JSON.
         converted = {
             "rule_id": rule["id"],
             "title": rule["title"],
             "level": rule["level"],
-            "techniques": [t for t in rule["tags"] if str(t).lower().startswith("attack.t")],
+            "techniques": [
+                tag for tag in rule["tags"]
+                if str(tag).lower().startswith("attack.t")
+            ],
             "query": to_query(rule["detection"]),
             "condition": rule["detection"]["condition"],
-            "note": "Demo conversion. The real conversion is in the next part of the pipeline (convert_wazuh.py).",
+            "note": (
+                "Demo conversion. The real conversion is in the "
+                "next part of the pipeline (convert_wazuh.py)."
+            ),
         }
-        (OUT / f"{path.stem}.json").write_text(json.dumps(converted, indent=2), encoding="utf-8")
-        rows.append((path.name, "PASS", f"converted to out/converted/{path.stem}.json"))
+
+        output_file = OUT / f"{path.stem}.json"
+
+        output_file.write_text(
+            json.dumps(converted, indent=2),
+            encoding="utf-8"
+        )
+
+        rows.append(
+            (
+                path.name,
+                "PASS",
+                f"converted to out/converted/{path.stem}.json"
+            )
+        )
+
+    # --------------------------------------------------
+    # Decide what happens to the rejected rules.
+    # All error details are already collected and printed
+    # above, so removing a file here loses no information.
+    # --------------------------------------------------
+
+    actions = remove_rejected_rules(invalid_files, bool(args), remove)
+
+    # --------------------------------------------------
+    # Print validation summary.
+    # --------------------------------------------------
 
     print("\nResult:")
-    for name, status, note in rows:
-        print(f"  {status}  {name}  {note}")
 
+    for name, status, note in rows:
+        action = actions.get(name, "")
+        suffix = f"  [{action}]" if action else ""
+        print(f"  {status}  {name}  {note}{suffix}")
+
+    removed = sum(1 for a in actions.values() if a.startswith("removed"))
+
+    print("\nSummary:")
+    print(f"  Total:   {len(rows)}")
+    print(f"  Passed:  {sum(1 for r in rows if r[1] == 'PASS')}")
+    print(f"  Failed:  {sum(1 for r in rows if r[1] == 'FAIL')}")
+    print(f"  Removed: {removed}")
+
+    # GitHub Actions summary.
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
+
     if summary and rows:
         with open(summary, "a", encoding="utf-8") as f:
             f.write("\n### Step 1: Syntax and metadata check\n")
-            f.write("| Rule | Result | Detail |\n|---|---|---|\n")
-            for name, status, note in sorted(rows, key=lambda r: r[1] != "FAIL"):  # FAIL first
-                f.write(f"| {name} | {status} | {note.replace('|', '/')} |\n")
+            f.write("| Rule | Result | Detail | Action |\n")
+            f.write("|---|---|---|---|\n")
 
-    # Only complain about "no rules" on a full scan. When specific files were
-    # passed in (e.g. a push that only deleted rules), an empty list is fine.
+            for name, status, note in sorted(
+                rows,
+                key=lambda r: r[1] != "FAIL"
+            ):
+                safe_note = note.replace("|", "/")
+                action = actions.get(name, "")
+                f.write(
+                    f"| {name} | {status} | {safe_note} | {action} |\n"
+                )
+
+    # Only complain about no rules on a full scan.
     if not rows and not args:
         print("::error::No rules found in rules/")
         failed = True
 
+    # Exit code tells GitHub Actions whether validation failed.
     sys.exit(1 if failed else 0)
 
 
