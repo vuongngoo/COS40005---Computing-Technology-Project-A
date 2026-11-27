@@ -117,6 +117,8 @@ def _escape_literal(text):
     for ch in text:
       if ch == "\\":
         parts.append(r"\\+")
+      elif ch == '"':
+        parts.append(r'\\*"')
       else:
         parts.append(_PCRE_META.sub(r"\\\1", ch))
     return "".join(parts)
