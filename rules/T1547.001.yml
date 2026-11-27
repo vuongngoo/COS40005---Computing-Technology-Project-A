@@ -5,7 +5,7 @@ description: Detects reg.exe adding a value under CurrentVersion\Run or RunOnce.
 references:
   - https://attack.mitre.org/techniques/T1547/001/
 author: Group 7
-date: '2026-11-27'
+date: '2026-11-28'
 tags:
   - attack.persistence
   - attack.privilege_escalation
