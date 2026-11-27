@@ -1,0 +1,32 @@
+title: Root Certificate Installed via Certutil
+id: 9e736b73-3676-4469-915e-a78eb67fece1
+status: experimental
+description: Detects certutil adding a certificate to the Trusted Root (root/authroot) store, which makes the system trust an attacker-controlled CA.
+references:
+  - https://attack.mitre.org/techniques/T1553/004/
+author: Group 7
+date: '2026-11-27'
+tags:
+  - attack.defense_evasion
+  - attack.t1553.004
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: '\certutil.exe'
+    CommandLine|contains:
+      - '-addstore root'
+      - '-addstore -f root'
+      - '-addstore -user root'
+      - '-addstore -enterprise root'
+      - '-addstore -f -user root'
+      - '-addstore -user -f root'
+      - '-addstore "root"'
+      - '/addstore root'
+      - '-addstore authroot'
+  condition: selection
+falsepositives:
+  - Administrators deploying an internal root CA
+  - Enterprise tooling that installs trusted roots through certutil
+level: high
