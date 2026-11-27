@@ -1,11 +1,11 @@
 title: Local Account Created via net.exe
 id: fc4ae26b-be2f-46eb-a368-caa46d347bf9
 status: experimental
-description: Detects net.exe or net1.exe adding a local user or adding a member to a local group.
+description: Detects net.exe or net1.exe adding a local user or adding a member to a local group, and PowerShell New-LocalUser.
 references:
   - https://attack.mitre.org/techniques/T1136/001/
 author: Group 7
-date: '2026-11-27'
+date: '2026-11-28'
 tags:
   - attack.persistence
   - attack.t1136.001
@@ -13,12 +13,17 @@ logsource:
   category: process_creation
   product: windows
 detection:
-  selection:
+  selection_net:
     Image|endswith:
       - \net.exe
       - \net1.exe
     CommandLine|contains: ' /add'
-  condition: selection
+  selection_ps:
+    Image|endswith:
+      - \powershell.exe
+      - \pwsh.exe
+    CommandLine|contains: 'new-localuser'
+  condition: 1 of selection_*
 falsepositives:
   - Administrators provisioning local accounts
 level: medium
