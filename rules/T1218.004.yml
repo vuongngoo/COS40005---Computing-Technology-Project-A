@@ -1,0 +1,24 @@
+title: InstallUtil Proxy Execution
+id: 0e9104ac-0ca5-4471-b1aa-4e7edf815f52
+status: experimental
+description: Detects InstallUtil run with options typical of proxy execution of a .NET assembly.
+references:
+  - https://attack.mitre.org/techniques/T1218/004/
+author: Group 7
+date: '2026-11-27'
+tags:
+  - attack.defense_evasion
+  - attack.t1218.004
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: \installutil.exe
+    CommandLine|contains:
+      - /logfile=
+      - /logtoconsole=false
+  condition: selection
+falsepositives:
+  - Legitimate .NET service installers using InstallUtil
+level: medium

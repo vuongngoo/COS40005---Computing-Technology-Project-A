@@ -1,0 +1,27 @@
+title: Registry Run Key Persistence via reg.exe
+id: 71a9823f-6b99-4cc0-8e48-b9632bccb0ae
+status: experimental
+description: Detects reg.exe adding a value under CurrentVersion\Run or RunOnce.
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+author: Group 7
+date: '2026-11-27'
+tags:
+  - attack.persistence
+  - attack.privilege_escalation
+  - attack.t1547.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: \reg.exe
+    CommandLine|contains:
+      - add hkcu\software\microsoft\windows\currentversion\run
+      - add "hkcu\software\microsoft\windows\currentversion\run
+      - add hklm\software\microsoft\windows\currentversion\run
+      - add "hklm\software\microsoft\windows\currentversion\run
+  condition: selection
+falsepositives:
+  - Installers and software updaters registering autostart entries
+level: medium

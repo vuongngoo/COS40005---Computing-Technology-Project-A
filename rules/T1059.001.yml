@@ -1,0 +1,28 @@
+title: Suspicious PowerShell Encoded Command or Download Cradle
+id: 0e568c2b-840a-4131-bbc1-f52f86c3e390
+status: experimental
+description: Detects PowerShell launched with an encoded command or common download/decode primitives.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+author: Group 7
+date: '2026-11-27'
+tags:
+  - attack.execution
+  - attack.t1059.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith:
+      - \powershell.exe
+      - \pwsh.exe
+    CommandLine|contains:
+      - ' -enc'
+      - downloadstring
+      - downloadfile
+      - frombase64string
+  condition: selection
+falsepositives:
+  - Admin or deployment scripts (SCCM, Intune) that use encoded commands
+level: medium

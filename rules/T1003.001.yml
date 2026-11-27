@@ -1,0 +1,27 @@
+title: LSASS Memory Dump via comsvcs MiniDump or ProcDump
+id: f5dd1093-19e7-4e27-b16a-2803c5c4586a
+status: experimental
+description: Detects dumping of LSASS memory using rundll32 comsvcs.dll MiniDump or procdump.
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+author: Group 7
+date: '2026-11-27'
+tags:
+  - attack.credential_access
+  - attack.t1003.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_comsvcs:
+    Image|endswith: \rundll32.exe
+    CommandLine|contains: minidump
+  selection_procdump:
+    Image|endswith:
+      - \procdump.exe
+      - \procdump64.exe
+    CommandLine|contains: lsass
+  condition: selection_comsvcs or selection_procdump
+falsepositives:
+  - Authorized debugging of lsass by administrators
+level: high

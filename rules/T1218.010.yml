@@ -1,0 +1,24 @@
+title: Regsvr32 Scriptlet Execution (Squiblydoo)
+id: 51f72bd6-4cc5-4e88-81b0-d70849a97770
+status: experimental
+description: Detects regsvr32 loading scrobj.dll or a remote scriptlet via /i:http.
+references:
+  - https://attack.mitre.org/techniques/T1218/010/
+author: Group 7
+date: '2026-11-27'
+tags:
+  - attack.defense_evasion
+  - attack.t1218.010
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    Image|endswith: \regsvr32.exe
+    CommandLine|contains:
+      - scrobj.dll
+      - /i:http
+  condition: selection
+falsepositives:
+  - Rare legitimate COM scriptlet registration
+level: high
