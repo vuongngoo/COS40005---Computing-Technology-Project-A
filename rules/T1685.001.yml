@@ -1,0 +1,29 @@
+title: Windows Audit or Event Logging Disabled
+id: ee0d89bb-f018-46ca-be12-8207bd642154
+status: experimental
+description: Detects auditpol clearing or disabling audit policy, or wevtutil disabling a log channel.
+references:
+  - https://attack.mitre.org/techniques/T1685/001/
+author: Group 7
+date: '2026-11-27'
+tags:
+  - attack.defense_evasion
+  - attack.t1685.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_auditpol:
+    Image|endswith: \auditpol.exe
+    CommandLine|contains:
+      - /clear
+      - /remove
+      - success:disable
+      - failure:disable
+  selection_wevtutil:
+    Image|endswith: \wevtutil.exe
+    CommandLine|contains: /e:false
+  condition: selection_auditpol or selection_wevtutil
+falsepositives:
+  - Audit policy changes by authorized administrators or GPO tooling
+level: high
