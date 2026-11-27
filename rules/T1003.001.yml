@@ -1,4 +1,4 @@
-title: LSASS Memory Dump via comsvcs MiniDump or ProcDump
+title: Test Sync
 id: f5dd1093-19e7-4e27-b16a-2803c5c4586a
 status: experimental
 description: Detects dumping of LSASS memory using rundll32 comsvcs.dll MiniDump or procdump.
