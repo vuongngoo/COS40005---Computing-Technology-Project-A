@@ -13,7 +13,7 @@ detection:
   selection:
     Image|endswith: '\reg.exe'
     CommandLine|contains:
-      - 'save hklm\sam '
+      - 'save '
       - 'save hklm\security '
       - 'save hklm\system '
       - 'save hkey_local_machine\sam '
