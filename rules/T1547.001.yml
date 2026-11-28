@@ -17,7 +17,7 @@ detection:
   selection:
     Image|endswith: \reg.exe
     CommandLine|contains:
-      - add hkcu\software\microsoft\windows\currentversion\run
+      - hkcu\software\microsoft\windows\currentversion\run
       - add "hkcu\software\microsoft\windows\currentversion\run
       - add hklm\software\microsoft\windows\currentversion\run
       - add "hklm\software\microsoft\windows\currentversion\run
