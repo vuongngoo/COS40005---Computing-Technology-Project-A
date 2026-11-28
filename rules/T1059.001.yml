@@ -19,7 +19,6 @@ detection:
       - \pwsh.exe
     CommandLine|contains:
       - ' -enc'
-      - ' -e '
       - ' -ec '
       - downloadstring
       - downloadfile
