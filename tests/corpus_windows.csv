@@ -1,0 +1,18 @@
+kind,what,start_utc,end_utc,note
+attack,T1059.001 (first runs),2026-11-27 16:05:38,2026-11-27 16:06:04,
+attack,T1059.001,2026-11-27 16:09:37,2026-11-27 16:10:03,
+attack,"T1003.001,T1218.010,T1218.003",2026-11-27 16:24:46,2026-11-27 16:25:37,
+attack,"T1685.005,T1685.001",2026-11-27 16:27:12,2026-11-27 16:27:52,
+attack,"T1003.002,T1053.005,T1197,T1490,T1553.004",2026-11-27 16:30:42,2026-11-27 16:33:44,
+attack,T1218.004,2026-11-27 16:49:11,2026-11-27 16:49:40,
+attack,"T1136.001,T1218.010 (+known miss)",2026-11-27 16:50:34,2026-11-27 16:51:49,
+benign,"all 3 rounds (165 steps, contiguous)",2026-11-27 16:57:50,2026-11-27 17:27:30,reconstructed from alert times + script order; boundaries approximate (+-30s); no attack activity inside this window
+benign,round 1 (55 steps),2026-11-27 16:57:50,2026-11-27 17:08:00,approximate
+benign,round 2 (55 steps),2026-11-27 17:08:00,2026-11-27 17:17:50,approximate
+benign,round 3 (55 steps),2026-11-27 17:17:50,2026-11-27 17:27:30,approximate
+benign_idle,idle noise 5 min (test),2026-11-28 05:46:47,2026-11-28 05:52:03,"48 process-create events, 0 alerts"
+benign_idle,idle noise 45 min (MAIN),2026-11-28 05:53:20,2026-11-28 06:38:45,"358 process-create events, 0 alerts from the 15 rules"
+benign_idle,idle noise first run (stalled),2026-11-28 02:18:39,2026-11-28 05:42:13,"only active until ~02:36 UTC (stalled by mspaint/QuickEdit); 164 process-create events, 0 alerts; do NOT use as 3h24 of activity"
+benign,"tuned rules benign re-run (T1003.002,T1053.005,T1685.005)",2026-11-28 06:51:30,2026-11-28 06:53:30,approximate; first benign event 06:51:55
+attack,"tuned rules attack re-run (T1003.002,T1053.005,T1685.005)",2026-11-28 06:53:50,2026-11-28 06:54:45,
+attack,T1547.001,2026-11-28 10:41:50,2026-11-28 10:42:25,
