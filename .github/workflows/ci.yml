@@ -4,9 +4,13 @@ on:
     branches: [main]
     paths:
       - 'rules/**'
+      - 'scripts/**'
+      - 'tests/**'
   pull_request:
     paths:
       - 'rules/**'
+      - 'scripts/**'
+      - 'tests/**'
 
 permissions:
   contents: read
@@ -96,11 +100,35 @@ jobs:
           path: out/
 
   # ---------------------------------------------------------------
+  # 1b. Detection test (runs on every PR and on every push to main).
+  #     Replays the labelled event corpus (tests/corpus/corpus.jsonl)
+  #     against ALL rules, converted with the same scripts/convert_wazuh.py
+  #     used for deployment. Fails if a rule misses a labelled attack (FN)
+  #     or fires on an ordinary benign event (FP). Lookalike events are
+  #     only reported. Needs no secrets and never talks to Wazuh.
+  #     Mark "detection-test" as a required status check in branch protection.
+  # ---------------------------------------------------------------
+  detection-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyyaml pysigma
+
+      - name: Replay corpus (TP / FN / FP per rule)
+        run: python scripts/fp_check.py
+
+  # ---------------------------------------------------------------
   # 2. Auto-merge (PRs only). Turns on auto-merge; GitHub merges
   #    the PR once every required check is green.
   # ---------------------------------------------------------------
   automerge:
-    needs: process-rules
+    needs: [process-rules, detection-test]
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -121,7 +149,7 @@ jobs:
   #     files that changed in this push.
   # ---------------------------------------------------------------
   deploy:
-    needs: process-rules
+    needs: [process-rules, detection-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.WAZUH_DEPLOY != 'true'
     runs-on: ubuntu-latest
     steps:
@@ -175,7 +203,7 @@ jobs:
   #     Check yours with:  docker ps --format "{{.Names}}"
   # ---------------------------------------------------------------
   deploy-wazuh:
-    needs: process-rules
+    needs: [process-rules, detection-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.WAZUH_DEPLOY == 'true'
     runs-on: [self-hosted, linux]
     steps:

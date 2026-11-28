@@ -1,0 +1,57 @@
+# Ground-truth labels used by scripts/make_corpus.py.
+#
+# These signatures describe the ATTACK / LOOKALIKE commands that were run on purpose
+# (Atomic Red Team tests and our own benign_15rules.ps1 steps). They are written from the
+# commands themselves, NOT from the Sigma rules, so the corpus does not depend on the
+# rules that it is used to test.
+#
+# Matching is done on lower-cased text after undoing Wazuh's JSON escaping
+# (\\ -> \   and   \" -> ").  So write ONE backslash here and plain quotes.
+#
+# image   : list of lower-case file names; the event image must end with one of them
+# all     : every substring must appear in the command line
+# any     : at least one substring must appear in the command line
+# expect_miss : true = a known false negative we accept (reported, never fails CI)
+
+attack_signatures:
+  - {technique: T1003.001, image: [rundll32.exe], all: [comsvcs.dll], any: [minidump]}
+  - {technique: T1003.002, image: [reg.exe], any: ['save hklm\sam', 'save hklm\system', 'save hklm\security']}
+  - {technique: T1053.005, image: [schtasks.exe], all: ['/create']}
+  - {technique: T1059.001, image: [powershell.exe, pwsh.exe], any: [' -e ', ' -enc', 'downloadstring', 'downloadfile', 'frombase64string']}
+  - {technique: T1136.001, image: [net.exe, net1.exe], all: [' /add']}
+  - {technique: T1136.001, image: [powershell.exe, pwsh.exe], all: ['new-localuser']}
+  - {technique: T1197, image: [bitsadmin.exe], all: ['/transfer']}
+  - {technique: T1218.003, image: [cmstp.exe], all: [' /s ']}
+  - {technique: T1218.004, image: [installutil.exe], all: ['/logfile=']}
+  - {technique: T1218.010, image: [regsvr32.exe], any: ['scrobj.dll', '/i:http']}
+  - {technique: T1218.010, image: [regsvr32.exe], all: [allthethings], expect_miss: true}
+  - {technique: T1490, image: [vssadmin.exe], all: ['delete shadows']}
+  - {technique: T1546.012, image: [reg.exe], all: ['add '], any: ['image file execution options', 'silentprocessexit']}
+  - {technique: T1547.001, image: [reg.exe], all: ['add '], any: ['currentversion\run']}
+  - {technique: T1553.004, image: [certutil.exe], all: ['-addstore'], any: [' root', 'authroot']}
+  - {technique: T1685.005, image: [wevtutil.exe], all: [' cl ']}
+  - {technique: T1685.005, image: [powershell.exe, pwsh.exe], all: ['clear-eventlog']}
+  - {technique: T1685.001, image: [auditpol.exe], all: ['/set'], any: [disable]}
+  - {technique: T1685.001, image: [wevtutil.exe], all: [' sl ', '/e:false']}
+
+# Inside the benign windows every process-create event is benign. The ones below are the
+# deliberate "lookalikes": the same tool as an attack with a legitimate purpose.
+# They are reported separately and never make CI fail.
+lookalike_signatures:
+  - {name: comsvcs MiniDump of notepad, image: [rundll32.exe], all: [comsvcs.dll, fp_np.dmp]}
+  - {name: reg save of HKLM\SYSTEM subkey, image: [reg.exe], all: ['save hklm\system\currentcontrolset\services\tcpip']}
+  - {name: schtasks daily backup task, image: [schtasks.exe], all: ['/create', fp_backupdaily]}
+  - {name: powershell -EncodedCommand (admin tooling), image: [powershell.exe], all: ['-encodedcommand']}
+  - {name: powershell FromBase64String, image: [powershell.exe], all: [frombase64string]}
+  - {name: powershell DownloadString localhost, image: [powershell.exe], all: [downloadstring]}
+  - {name: wevtutil cl on own log, image: [wevtutil.exe], all: [' cl fptestlog']}
+  - {name: bitsadmin /transfer legit download, image: [bitsadmin.exe], all: ['/transfer', fpjob]}
+  - {name: net user /add admin provisioning, image: [net.exe, net1.exe], all: [fp_testuser, ' /add']}
+  - {name: cmstp /s silent install, image: [cmstp.exe], all: [' /s ', fp_missing.inf]}
+  - {name: InstallUtil /logfile= service installer, image: [installutil.exe], all: ['/logfile=', fp_missing.exe]}
+  - {name: regsvr32 /s scrobj.dll re-register, image: [regsvr32.exe], all: ['/s scrobj.dll']}
+  - {name: vssadmin delete shadows (fails), image: [vssadmin.exe], all: ['delete shadows']}
+  - {name: reg add IFEO GlobalFlag, image: [reg.exe], all: ['add ', fp_dummy.exe, globalflag]}
+  - {name: reg add Run value autostart, image: [reg.exe], all: ['add ', fptestapp]}
+  - {name: wevtutil sl /e:false own log, image: [wevtutil.exe], all: [' sl fptestlog', '/e:false']}
+  - {name: certutil -addstore -user My (own cert), image: [certutil.exe], all: ['-addstore -user my']}
