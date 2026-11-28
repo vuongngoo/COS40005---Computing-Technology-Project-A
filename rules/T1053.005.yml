@@ -1,11 +1,11 @@
-title: Scheduled Task Creation via Schtasks
+title: Suspicious Scheduled Task Creation via Schtasks
 id: 5b8a1c2e-7f3d-4a6b-9c1e-2d4f6a8b0c13
 status: experimental
-description: Detects schtasks.exe being used to create a scheduled task, a common persistence technique.
+description: Detects schtasks.exe creating or changing a task with a persistence-style trigger (logon, startup, idle), SYSTEM privileges, or a script/LOLBin payload.
 references:
     - https://attack.mitre.org/techniques/T1053/005/
 author: Nguyen Duy Hoang
-date: 2026-11-26
+date: '2026-11-28'
 tags:
     - attack.persistence
     - attack.t1053.005
@@ -15,9 +15,18 @@ logsource:
 detection:
     selection_img:
         Image|endswith: '\schtasks.exe'
-    selection_cmd:
-        CommandLine|contains: '/create'
+    selection_susp:
+        CommandLine|contains:
+            - ' onlogon'
+            - ' onstart'
+            - ' onidle'
+            - '/ru system'
+            - 'cmd.exe /c'
+            - 'powershell'
+            - 'wscript'
+            - 'mshta'
+            - 'rundll32'
     condition: all of selection_*
 falsepositives:
-    - Software installers and admin scripts creating legitimate tasks
+    - Software installers and admin scripts creating tasks that run at logon, startup or as SYSTEM
 level: medium

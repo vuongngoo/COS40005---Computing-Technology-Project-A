@@ -1,11 +1,11 @@
 title: Windows Event Logs Cleared
 id: 6cd21e5d-3415-400b-a7e3-967795deedb9
 status: experimental
-description: Detects wevtutil cl or PowerShell Clear-EventLog used to clear Windows event logs.
+description: Detects wevtutil clearing the Security, System, Application, Sysmon or PowerShell logs, or PowerShell Clear-EventLog.
 references:
   - https://attack.mitre.org/techniques/T1685/005/
 author: Group 7
-date: '2026-11-27'
+date: '2026-11-28'
 tags:
   - attack.defense_evasion
   - attack.t1685.005
@@ -16,8 +16,14 @@ detection:
   selection_wevtutil:
     Image|endswith: \wevtutil.exe
     CommandLine|contains:
-      - ' cl '
-      - ' clear-log '
+      - ' cl security'
+      - ' cl system'
+      - ' cl application'
+      - ' cl microsoft-windows-sysmon'
+      - ' cl microsoft-windows-powershell'
+      - ' clear-log security'
+      - ' clear-log system'
+      - ' clear-log application'
   selection_ps:
     Image|endswith:
       - \powershell.exe
@@ -25,5 +31,5 @@ detection:
     CommandLine|contains: clear-eventlog
   condition: selection_wevtutil or selection_ps
 falsepositives:
-  - Administrators clearing logs during maintenance
+  - Administrators clearing the main logs during maintenance
 level: high
